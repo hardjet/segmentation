@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data
+data/
+
+# Experiments directory
+experiments/
+
+# Out directory
+out/
+
+# pretrained_weights
+pretrained_weights
+
+.idea/
+

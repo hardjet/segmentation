@@ -1,0 +1,19 @@
+# Directories arguments
+data_dir: "full_cityscapes_res"
+exp_dir:  "unet_resnet18"
+out_dir:  "unet_resnet18_realsense"
+
+# Data arguments
+img_height:   512
+img_width:    1024
+num_channels: 3
+num_classes:  20
+
+# Train arguments
+batch_size: 1
+shuffle: False
+data_mode: "realsense"
+
+# Misc arguments
+verbose: False
+
