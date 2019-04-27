@@ -20,7 +20,7 @@ import time
 import scipy.misc as misc
 from utils.img_utils import decode_labels
 # from utils.seg_dataloader import SegDataLoader
-from data.postprocess import postprocess
+from utils.postprocess import postprocess
 import os
 
 matplotlib.use('Agg')
