@@ -36,6 +36,7 @@ class Agent:
         # Get the class from globals by selecting it by arguments
         self.model = globals()[args.model]
 
+        # trainer or tester
         self.operator = globals()[args.operator]
 
         self.sess = None

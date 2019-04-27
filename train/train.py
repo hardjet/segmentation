@@ -395,7 +395,7 @@ class Train(BasicTrain):
                 feed_dict = {self.model.x_pl: x_batch,
                              self.model.y_pl: y_batch,
                              self.model.is_training: True
-                             #                             self.model.curr_learning_rate:curr_lr
+                             # self.model.curr_learning_rate:curr_lr
                              }
 
                 # Run the feed forward but the last iteration finalize what you want to do
@@ -409,7 +409,7 @@ class Train(BasicTrain):
                     loss_list += [loss]
                     acc_list += [acc]
                     # summarize
-                #                    self.add_summary(cur_it, summaries_merged=summaries_merged)
+                    # self.add_summary(cur_it, summaries_merged=summaries_merged)
 
                 else:
                     # run the feed_forward
@@ -434,9 +434,7 @@ class Train(BasicTrain):
                     summaries_dict['train-loss-per-epoch'] = total_loss
                     summaries_dict['train-acc-per-epoch'] = total_acc
 
-                    # if self.args.data_mode != 'experiment_v2':
-                    #     summaries_dict['train_prediction_sample'] = segmented_imgs
-                    # self.add_summary(cur_it, summaries_dict=summaries_dict, summaries_merged=summaries_merged)
+                    self.add_summary(cur_it, summaries_dict=summaries_dict, summaries_merged=summaries_merged)
 
                     # report
                     self.reporter.report_experiment_statistics('train-acc', 'epoch-' + str(cur_epoch), str(total_acc))
