@@ -409,7 +409,7 @@ class Train(BasicTrain):
                     loss_list += [loss]
                     acc_list += [acc]
                     # summarize
-                    # self.add_summary(cur_it, summaries_merged=summaries_merged)
+                    self.add_summary(cur_it, summaries_merged=summaries_merged)
 
                 else:
                     # run the feed_forward
