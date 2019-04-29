@@ -6,6 +6,7 @@ from layers.convolution import conv2d_transpose, conv2d
 import tensorflow as tf
 from utils.misc import _debug
 
+
 class DilationResNet18(BasicModel):
     """
     FCN8s with MobileNet as an encoder Model Architecture

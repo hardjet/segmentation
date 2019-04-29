@@ -1,7 +1,7 @@
 import tensorflow as tf
 from layers.convolution import depthwise_separable_conv2d, conv2d
 import os
-from utils.misc import load_obj, save_obj
+from utils.misc import load_obj
 
 
 class MobileNet:
@@ -9,8 +9,8 @@ class MobileNet:
     MobileNet Class
     """
 
-    MEAN = [73.29132098,  83.04442645,  72.5238962]
-    # MEAN = [0., 0., 0.]
+    # MEAN = [73.29132098,  83.04442645,  72.5238962]
+    MEAN = [0., 0., 0.]
     # MEAN = [123.7, 116.8, 103.9]
 
     def __init__(self, x_input,
@@ -169,16 +169,23 @@ class MobileNet:
             self.feed1 = self.conv4_2
             self.feed2 = self.conv3_2
 
+            # 打印信息
+            # variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="network/mobilenet_encoder")
+            # for variable in variables:
+            #     print("tensor_name: ", variable.name, variable.shape)
+
             print("\nEncoder MobileNet is built successfully\n\n")
 
-    def __restore(self, file_name, sess):
+    @staticmethod
+    def __restore(file_name, sess):
         variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="network/mobilenet_encoder")
-        dict = load_obj(file_name)
+        net_dict = load_obj(file_name)
         for variable in variables:
-            for key, value in dict.items():
-                print('Layer Loaded ', key)
-                if key in variable.name:
-                    sess.run(tf.assign(variable, value))
+            # 去掉network/
+            name_in_pkl = variable.name[8:]
+            if name_in_pkl in net_dict:
+                print('Loaded:', variable.name)
+                sess.run(tf.assign(variable, net_dict[name_in_pkl]))
 
     def load_pretrained_weights(self, sess):
         print("Loading ImageNet Pretrained Weights...")
@@ -186,50 +193,50 @@ class MobileNet:
         self.__restore(self.pretrained_path, sess)
         print("ImageNet Pretrained Weights Loaded Initially")
 
-    def __convert_graph_names(self, path):
-        """
-        This function is to convert from the mobilenet original model pretrained weights structure to our
-        model pretrained weights structure.
-        :param path: (string) path to the original pretrained weights .pkl file
-        :return: None
-        """
-        dict = load_obj(path)
-        variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='mobilenet_encoder')
-        dict_output = {}
-        # for variable in variables:
-        #     print(variable.name)
-        # for key, value in dict.items():
-        #     print(key)
-
-        for key, value in dict.items():
-            for variable in variables:
-                for i in range(len(dict)):
-                    for j in range(len(variables)):
-                        if ((key.find("Conv2d_" + str(i) + "_") != -1 and variable.name.find(
-                                        "conv_ds_" + str(j) + "/") != -1) and i + 1 == j):
-                            if key.find("depthwise") != -1 and variable.name.find(
-                                    "depthwise") != -1 and (key.find("gamma") != -1 and variable.name.find(
-                                "gamma") != -1 or key.find("beta") != -1 and variable.name.find(
-                                "beta") != -1) or key.find("pointwise") != -1 and variable.name.find(
-                                "pointwise") != -1 and (key.find("gamma") != -1 and variable.name.find(
-                                "gamma") != -1 or key.find("beta") != -1 and variable.name.find(
-                                "beta") != -1) or key.find("pointwise/weights") != -1 and variable.name.find(
-                                "pointwise/weights") != -1 or key.find(
-                                "depthwise_weights") != -1 and variable.name.find(
-                                "depthwise/weights") != -1 or key.find("pointwise/biases") != -1 and variable.name.find(
-                                "pointwise/biases") != -1 or key.find("depthwise/biases") != -1 and variable.name.find(
-                                "depthwise/biases") != -1 or key.find("1x1/weights") != -1 and variable.name.find(
-                                "1x1/weights") != -1 or key.find("1x1/biases") != -1 and variable.name.find(
-                                "1x1/biases") != -1:
-                                dict_output[variable.name] = value
-                        elif key.find(
-                                "Conv2d_0/") != -1 and variable.name.find("conv_1/") != -1:
-                            if key.find("weights") != -1 and variable.name.find("weights") != -1 or key.find(
-                                    "biases") != -1 and variable.name.find(
-                                "biases") != -1 or key.find("beta") != -1 and variable.name.find(
-                                "beta") != -1 or key.find("gamma") != -1 and variable.name.find(
-                                "gamma") != -1:
-                                dict_output[variable.name] = value
-
-        save_obj(dict_output, self.pretrained_path)
-        print("Pretrained weights converted to the new structure. The filename is mobilenet_v1.pkl.")
+    # def __convert_graph_names(self, path):
+    #     """
+    #     This function is to convert from the mobilenet original model pretrained weights structure to our
+    #     model pretrained weights structure.
+    #     :param path: (string) path to the original pretrained weights .pkl file
+    #     :return: None
+    #     """
+    #     dict = load_obj(path)
+    #     variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='mobilenet_encoder')
+    #     dict_output = {}
+    #     # for variable in variables:
+    #     #     print(variable.name)
+    #     # for key, value in dict.items():
+    #     #     print(key)
+    #
+    #     for key, value in dict.items():
+    #         for variable in variables:
+    #             for i in range(len(dict)):
+    #                 for j in range(len(variables)):
+    #                     if ((key.find("Conv2d_" + str(i) + "_") != -1 and variable.name.find(
+    #                                     "conv_ds_" + str(j) + "/") != -1) and i + 1 == j):
+    #                         if key.find("depthwise") != -1 and variable.name.find(
+    #                                 "depthwise") != -1 and (key.find("gamma") != -1 and variable.name.find(
+    #                             "gamma") != -1 or key.find("beta") != -1 and variable.name.find(
+    #                             "beta") != -1) or key.find("pointwise") != -1 and variable.name.find(
+    #                             "pointwise") != -1 and (key.find("gamma") != -1 and variable.name.find(
+    #                             "gamma") != -1 or key.find("beta") != -1 and variable.name.find(
+    #                             "beta") != -1) or key.find("pointwise/weights") != -1 and variable.name.find(
+    #                             "pointwise/weights") != -1 or key.find(
+    #                             "depthwise_weights") != -1 and variable.name.find(
+    #                           "depthwise/weights") != -1 or key.find("pointwise/biases") != -1 and variable.name.find(
+    #                           "pointwise/biases") != -1 or key.find("depthwise/biases") != -1 and variable.name.find(
+    #                             "depthwise/biases") != -1 or key.find("1x1/weights") != -1 and variable.name.find(
+    #                             "1x1/weights") != -1 or key.find("1x1/biases") != -1 and variable.name.find(
+    #                             "1x1/biases") != -1:
+    #                             dict_output[variable.name] = value
+    #                     elif key.find(
+    #                             "Conv2d_0/") != -1 and variable.name.find("conv_1/") != -1:
+    #                         if key.find("weights") != -1 and variable.name.find("weights") != -1 or key.find(
+    #                                 "biases") != -1 and variable.name.find(
+    #                             "biases") != -1 or key.find("beta") != -1 and variable.name.find(
+    #                             "beta") != -1 or key.find("gamma") != -1 and variable.name.find(
+    #                             "gamma") != -1:
+    #                             dict_output[variable.name] = value
+    #
+    #     save_obj(dict_output, self.pretrained_path)
+    #     print("Pretrained weights converted to the new structure. The filename is mobilenet_v1.pkl.")

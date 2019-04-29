@@ -6,6 +6,7 @@ from layers.convolution import conv2d_transpose, conv2d, atrous_conv2d, depthwis
 import tensorflow as tf
 from utils.misc import _debug
 
+
 class DilationMobileNet(BasicModel):
     """
     FCN8s with MobileNet as an encoder Model Architecture
@@ -15,7 +16,7 @@ class DilationMobileNet(BasicModel):
         super().__init__(args)
         # init encoder
         self.encoder = None
-        self.wd= self.args.weight_decay
+        self.wd = self.args.weight_decay
 
         # init network layers
         self.upscore2 = None
@@ -52,10 +53,10 @@ class DilationMobileNet(BasicModel):
         # Build Decoding part
         with tf.name_scope('dilation_2'):
             self.conv4_2 = atrous_conv2d('conv_ds_7_dil', self.encoder.conv4_1,
-                                                      num_filters=512, kernel_size=(3, 3), padding='SAME',
-                                                      activation=tf.nn.relu, dilation_rate=2,
-                                                      batchnorm_enabled=True, is_training=self.is_training,
-                                                      l2_strength=self.wd)
+                                         num_filters=512, kernel_size=(3, 3), padding='SAME',
+                                         activation=tf.nn.relu, dilation_rate=2,
+                                         batchnorm_enabled=True, is_training=self.is_training,
+                                         l2_strength=self.wd)
             _debug(self.conv4_2)
             self.conv5_1 = depthwise_separable_conv2d('conv_ds_8_dil', self.conv4_2, width_multiplier=self.encoder.width_multiplier,
                                                       num_filters=512, kernel_size=(3, 3), padding='SAME',
@@ -112,5 +113,5 @@ class DilationMobileNet(BasicModel):
                                              output_shape=self.x_pl.shape.as_list()[0:3] + [self.params.num_classes],
                                              kernel_size=(16, 16), stride=(8, 8), l2_strength=self.encoder.wd, is_training= self.is_training)
             _debug(self.upscore8)
-            self.logits= self.upscore8
+            self.logits = self.upscore8
 

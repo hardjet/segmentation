@@ -49,17 +49,17 @@ class SegDataLoader(object):
 
     def parse_train(self, im_path, label_path):
         # Load image
-        img= tf.read_file(im_path)
-        img= tf.image.decode_png(img, channels=3)
+        img = tf.read_file(im_path)
+        img = tf.image.decode_png(img, channels=3)
         last_image_dim = tf.shape(img)[-1]
 
         # Load label
-        label= tf.read_file(label_path)
-        label= tf.image.decode_png(label, channels=1)
+        label = tf.read_file(label_path)
+        label = tf.image.decode_png(label, channels=1)
 
         # Scale
         img = tf.image.resize_images(img, self.resize_shape, method=tf.image.ResizeMethod.BICUBIC)
-        label = tf.image.resize_images(label, self.resize_shape, method= tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        label = tf.image.resize_images(label, self.resize_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
 #        # combine input and label
 #        label = tf.cast(label, dtype=tf.float32)
@@ -69,7 +69,8 @@ class SegDataLoader(object):
 #        combined= tf.image.random_flip_left_right(combined)
 #
 #        # cropping
-#        combined_crop = tf.random_crop(combined,[self.crop_shape[0],self.crop_shape[1],4]) # TODO: Make cropping size a variable
+#        combined_crop = tf.random_crop(combined,[self.crop_shape[0],self.crop_shape[1],4])
+#        TODO: Make cropping size a variable
 #        img, label = (combined_crop[:, :, :last_image_dim], combined_crop[:, :, last_image_dim:])
 #        label = tf.cast(label, dtype=tf.uint8)
 #        img.set_shape((self.crop_shape[0], self.crop_shape[1], 3))
@@ -124,8 +125,8 @@ if __name__ == "__main__":
     session= tf.Session(config=config)
 
     with tf.device('/cpu:0'):
-        #segdl= SegDataLoader('/home/eren/Data/Cityscapes/', 10, (512,1024), (512,512), 'train.txt')
-        segdl = SegDataLoader('/home/eren/Data/Cityscapes/', 10, (512,1024), (512,512), 'val.txt', split='val')
+        # segdl= SegDataLoader('/home/eren/Data/Cityscapes/', 10, (512,1024), (512,512), 'train.txt')
+        segdl = SegDataLoader('/home/eren/Data/Cityscapes/', 10, (512, 1024), (512, 512), 'val.txt', split='val')
 
         iterator = tf.data.Iterator.from_structure(segdl.data_tr.output_types, segdl.data_tr.output_shapes)
         next_batch = iterator.get_next()
@@ -135,9 +136,5 @@ if __name__ == "__main__":
 
     for i in range(10):
         img_batch, label_batch = session.run(next_batch)
-#       print(img_batch)
-#       img_batch= np.asarray(img_batch,dtype=np.uint8)
-#       plt.imshow(label_batch[0,0,:,:,0]);plt.show()
-#       plt.imshow(img_batch[0,0,:,:,:]);plt.show()
 
 

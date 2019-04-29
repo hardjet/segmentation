@@ -177,7 +177,7 @@ class RESNET18:
                     if strides == 1:
                         shortcut = tf.identity(x)
                     else:
-                        shortcut= tf.pad(x, tf.constant([[0, 0], [1, 1], [1, 1], [0, 0]]), "CONSTANT")
+                        shortcut = tf.pad(x, tf.constant([[0, 0], [1, 1], [1, 1], [0, 0]]), "CONSTANT")
                         shortcut = tf.nn.max_pool(shortcut, [1, strides, strides, 1], [1, strides, strides, 1], 'VALID')
                 else:
                     shortcut = self._conv('shortcut_conv', x, padding='VALID',

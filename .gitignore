@@ -3,17 +3,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+/tmp
+
 # Data
-data/
+/data
 
 # Experiments directory
-experiments/
+/experiments
 
 # Out directory
-out/
+/out
 
 # pretrained_weights
 pretrained_weights
 
-.idea/
+/.idea
 

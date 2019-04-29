@@ -10,20 +10,20 @@ from utils.misc import timeit
 from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
-import matplotlib
+# import matplotlib
 import time
 import h5py
 import pickle
 # from utils.augmentation import flip_randomly_left_right_image_with_annotation, \
 #     scale_randomly_image_with_annotation_with_fixed_size_output
 import scipy.misc as misc
-from utils.img_utils import decode_labels
+# from utils.img_utils import decode_labels
 from utils.seg_dataloader import SegDataLoader
 # from data.postprocess import postprocess
-import os
+# import os
 
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+# matplotlib.use('Agg')
+# import matplotlib.pyplot as plt
 # import cv2
 # from tensorflow.contrib.data import Iterator
 # import pdb
@@ -690,7 +690,7 @@ class Train(BasicTrain):
 
         print('mean preds ', out_argmax[0].mean())
 
-        plt.imsave(self.args.out_dir + 'imgs/' + 'debug.png', segmented_imgs[0])
+        # plt.imsave(self.args.out_dir + 'imgs/' + 'debug.png', segmented_imgs[0])
 
         self.metrics.update_metrics(out_argmax[0], self.debug_y, 0, 0)
 
