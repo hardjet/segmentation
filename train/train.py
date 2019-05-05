@@ -12,8 +12,8 @@ import numpy as np
 import tensorflow as tf
 # import matplotlib
 import time
-import h5py
-import pickle
+# import h5py
+# import pickle
 # from utils.augmentation import flip_randomly_left_right_image_with_annotation, \
 #     scale_randomly_image_with_annotation_with_fixed_size_output
 import scipy.misc as misc
@@ -57,9 +57,10 @@ class Train(BasicTrain):
         self.images_summary_tags = [
             ('train_prediction_sample', [None, self.params.img_height, self.params.img_width * 2, 3]),
             ('val_prediction_sample', [None, self.params.img_height, self.params.img_width * 2, 3])]
-        self.summary_tags = []
+        # self.summary_tags = []
         self.summary_placeholders = {}
         self.summary_ops = {}
+        self.merged_summaries = None
         # init summaries and it's operators
         self.init_summaries()
         # Create summary writer
@@ -70,30 +71,12 @@ class Train(BasicTrain):
         self.run = None
         if self.args.data_mode == "experiment_tfdata":
             self.data_session = None
+            self.init_op = None
             self.train_next_batch, self.train_data_len = self.init_tfdata(self.args.batch_size, self.args.abs_data_dir,
                                                                           (self.args.img_height, self.args.img_width),
                                                                           mode='train')
             self.num_iterations_training_per_epoch = self.train_data_len // self.args.batch_size
             self.generator = self.train_tfdata_generator
-        elif self.args.data_mode == "experiment_h5":
-            self.train_data = None
-            self.train_data_len = None
-            self.val_data = None
-            self.val_data_len = None
-            self.num_iterations_training_per_epoch = None
-            self.num_iterations_validation_per_epoch = None
-            self.load_train_data_h5()
-            self.generator = self.train_h5_generator
-        elif self.args.data_mode == "experiment_v2":
-            self.targets_resize = self.args.targets_resize
-            self.train_data = None
-            self.train_data_len = None
-            self.val_data = None
-            self.val_data_len = None
-            self.num_iterations_training_per_epoch = None
-            self.num_iterations_validation_per_epoch = None
-            self.load_train_data(v2=True)
-            self.generator = self.train_generator
         elif self.args.data_mode == "experiment":
             self.train_data = None
             self.train_data_len = None
@@ -177,8 +160,7 @@ class Train(BasicTrain):
         self.train_data = {'X': np.load(self.args.data_dir + "X_train.npy"),
                            'Y': np.load(self.args.data_dir + "Y_train.npy")}
         self.train_data_len = self.train_data['X'].shape[0] - self.train_data['X'].shape[0] % self.args.batch_size
-        self.num_iterations_training_per_epoch = (
-                                                         self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
+        self.num_iterations_training_per_epoch = (self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
         print("Train-shape-x -- " + str(self.train_data['X'].shape))
         print("Train-shape-y -- " + str(self.train_data['Y'].shape))
         print("Num of iterations in one epoch -- " + str(self.num_iterations_training_per_epoch))
@@ -226,13 +208,19 @@ class Train(BasicTrain):
         """
         with tf.variable_scope('train-summary-per-epoch'):
             for tag in self.scalar_summary_tags:
-                self.summary_tags += tag
+                # self.summary_tags += tag
                 self.summary_placeholders[tag] = tf.placeholder('float32', None, name=tag)
                 self.summary_ops[tag] = tf.summary.scalar(tag, self.summary_placeholders[tag])
             for tag, shape in self.images_summary_tags:
-                self.summary_tags += tag
+                # self.summary_tags += tag
                 self.summary_placeholders[tag] = tf.placeholder('float32', shape, name=tag)
                 self.summary_ops[tag] = tf.summary.image(tag, self.summary_placeholders[tag], max_outputs=10)
+
+        self.merged_summaries = tf.summary.merge_all()
+        # s = tf.get_collection(tf.GraphKeys.SUMMARIES)
+        # for i in s:
+        #     if i.name == 'train-summary-per-epoch/train_prediction_sample_1:0':
+        #         print(i.name)
 
     def add_summary(self, step, summaries_dict=None, summaries_merged=None):
         """
@@ -252,19 +240,11 @@ class Train(BasicTrain):
             self.summary_writer.add_summary(summaries_merged, step)
 
     @timeit
-    def load_train_data(self, v2=False):
+    def load_train_data(self):
         print("Loading Training data..")
         self.train_data = {'X': np.load(self.args.data_dir + "X_train.npy"),
                            'Y': np.load(self.args.data_dir + "Y_train.npy")}
         self.train_data = self.resize(self.train_data)
-
-        if v2:
-            out_shape = (self.train_data['Y'].shape[1] // self.targets_resize,
-                         self.train_data['Y'].shape[2] // self.targets_resize)
-            yy = np.zeros((self.train_data['Y'].shape[0], out_shape[0], out_shape[1]), dtype=self.train_data['Y'].dtype)
-            for y in range(self.train_data['Y'].shape[0]):
-                yy[y, ...] = misc.imresize(self.train_data['Y'][y, ...], out_shape, interp='nearest')
-            self.train_data['Y'] = yy
         self.train_data_len = self.train_data['X'].shape[0]
 
         self.num_iterations_training_per_epoch = (self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
@@ -278,37 +258,7 @@ class Train(BasicTrain):
         self.val_data = {'X': np.load(self.args.data_dir + "X_val.npy"),
                          'Y': np.load(self.args.data_dir + "Y_val.npy")}
         self.val_data['Y_large'] = self.val_data['Y']
-        if v2:
-            out_shape = (self.val_data['Y'].shape[1] // self.targets_resize,
-                         self.val_data['Y'].shape[2] // self.targets_resize)
-            yy = np.zeros((self.val_data['Y'].shape[0], out_shape[0], out_shape[1]), dtype=self.train_data['Y'].dtype)
-            for y in range(self.val_data['Y'].shape[0]):
-                yy[y, ...] = misc.imresize(self.val_data['Y'][y, ...], out_shape, interp='nearest')
-            self.val_data['Y'] = yy
 
-        self.val_data_len = self.val_data['X'].shape[0] - self.val_data['X'].shape[0] % self.args.batch_size
-        self.num_iterations_validation_per_epoch = (
-                                                           self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
-        print("Val-shape-x -- " + str(self.val_data['X'].shape) + " " + str(self.val_data_len))
-        print("Val-shape-y -- " + str(self.val_data['Y'].shape))
-        print("Num of iterations on validation data in one epoch -- " + str(self.num_iterations_validation_per_epoch))
-        print("Validation data is loaded")
-
-    @timeit
-    def load_train_data_h5(self):
-        print("Loading Training data..")
-        self.train_data = h5py.File(self.args.data_dir + self.args.h5_train_file, 'r')
-        self.train_data_len = self.args.h5_train_len
-        self.num_iterations_training_per_epoch = (
-                                                         self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
-        print("Train-shape-x -- " + str(self.train_data['X'].shape) + " " + str(self.train_data_len))
-        print("Train-shape-y -- " + str(self.train_data['Y'].shape))
-        print("Num of iterations on training data in one epoch -- " + str(self.num_iterations_training_per_epoch))
-        print("Training data is loaded")
-
-        print("Loading Validation data..")
-        self.val_data = {'X': np.load(self.args.data_dir + "X_val.npy"),
-                         'Y': np.load(self.args.data_dir + "Y_val.npy")}
         self.val_data_len = self.val_data['X'].shape[0] - self.val_data['X'].shape[0] % self.args.batch_size
         self.num_iterations_validation_per_epoch = (
                                                            self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
@@ -340,24 +290,6 @@ class Train(BasicTrain):
             while True:
                 x_batch, y_batch = self.data_session.run(self.train_next_batch)
                 yield x_batch, y_batch[:, :, :, 0]
-
-    def train_h5_generator(self):
-        start = 0
-        idx = np.random.choice(self.train_data_len, self.train_data_len,
-                               replace=False)
-        while True:
-            # select the mini_batches
-            mask = idx[start:start + self.args.batch_size]
-            x_batch = self.train_data['X'][sorted(mask.tolist())]
-            y_batch = self.train_data['Y'][sorted(mask.tolist())]
-
-            # update start idx
-            start += self.args.batch_size
-
-            if start >= self.train_data_len:
-                return
-
-            yield x_batch, y_batch
 
     def resize(self, data):
         X = []
@@ -402,27 +334,22 @@ class Train(BasicTrain):
                 if cur_iteration < self.num_iterations_training_per_epoch - 1:
 
                     # run the feed_forward
-                    _, loss, acc, summaries_merged = self.sess.run(
-                        [self.model.train_op, self.model.loss, self.model.accuracy, self.model.merged_summaries],
+                    _, loss, acc = self.sess.run(
+                        [self.model.train_op, self.model.loss, self.model.accuracy],
                         feed_dict=feed_dict)
                     # log loss and acc
                     loss_list += [loss]
                     acc_list += [acc]
                     # summarize
-                    self.add_summary(cur_it, summaries_merged=summaries_merged)
+                    # self.add_summary(cur_it, summaries_merged=summaries_merged)
 
                 else:
                     # run the feed_forward
-                    if self.args.data_mode == 'experiment_v2':
-                        _, loss, acc, summaries_merged = self.sess.run(
-                            [self.model.train_op, self.model.loss, self.model.accuracy,
-                             self.model.merged_summaries],
-                            feed_dict=feed_dict)
-                    else:
-                        _, loss, acc, summaries_merged, segmented_imgs = self.sess.run(
-                            [self.model.train_op, self.model.loss, self.model.accuracy,
-                             self.model.merged_summaries, self.model.segmented_summary],
-                            feed_dict=feed_dict)
+
+                    _, loss, acc, summaries_merged, segmented_imgs = self.sess.run(
+                        [self.model.train_op, self.model.loss, self.model.accuracy,
+                         self.merged_summaries, self.model.segmented_summary],
+                        feed_dict=feed_dict)
 
                     # log loss and acc
                     loss_list += [loss]
@@ -473,9 +400,6 @@ class Train(BasicTrain):
             if cur_epoch % self.args.test_every == 0:
                 self.test_per_epoch(step=self.model.global_step_tensor.eval(self.sess),
                                     epoch=self.model.global_epoch_tensor.eval(self.sess))
-        #            if cur_epoch % self.args.learning_decay_every == 0:
-        #                curr_lr= curr_lr*self.args.learning_decay
-        #                print('Current learning rate is ', curr_lr)
 
         print("Training Finished")
 
@@ -532,14 +456,6 @@ class Train(BasicTrain):
                 loss_list += [loss]
                 acc_list += [acc]
                 inf_list += [end - start]
-                # if self.args.data_mode == 'experiment_v2':
-                #     yy = np.zeros((out_argmax.shape[0], y_batch_large.shape[1], y_batch_large.shape[2]),
-                #                   dtype=np.uint32)
-                #     out_argmax = np.asarray(out_argmax, dtype=np.uint8)
-                #     for y in range(out_argmax.shape[0]):
-                #         yy[y, ...] = misc.imresize(out_argmax[y, ...], y_batch_large.shape[1:], interp='nearest')
-                #     y_batch = y_batch_large
-                #     out_argmax = yy
 
                 # log metrics
                 self.metrics.update_metrics_batch(out_argmax, y_batch)
@@ -600,100 +516,8 @@ class Train(BasicTrain):
                     print("hmm not the best validation epoch :/..")
                 break
 
-                # Break the loop to finalize this epoch
-    @staticmethod
-    def linknet_postprocess(gt):
-        gt2 = gt - 1
-        gt2[gt == -1] = 19
-        return gt2
-
     def finalize(self):
         self.reporter.finalize()
         self.summary_writer.close()
         self.save_model()
 
-    def debug_layers(self):
-        """
-        This function will be responsible for output all outputs of all layers and dump them in a pickle
-
-        :return:
-        """
-        print("Debugging mode will begin NOW..")
-
-        layers = tf.get_collection('debug_layers')
-        print("ALL Layers in the collection that i wanna to run {} layer".format(len(layers)))
-        for layer in layers:
-            print(layer)
-
-        # exit(0)
-
-        # reset metrics
-        self.metrics.reset()
-
-        print('mean image ', self.debug_x.mean())
-        print('mean gt ', self.debug_y.mean())
-
-        self.debug_y = self.linknet_preprocess_gt(self.debug_y)
-
-        feed_dict = {self.model.x_pl: self.debug_x,
-                     self.model.y_pl: self.debug_y,
-                     self.model.is_training: False
-                     }
-
-        #        var = [v for v in tf.all_variables() if v.op.name == "network/decoder_block_4/deconv/deconv/weights"]
-        #        conv_w= self.sess.run(var[0])
-        #        var = [v for v in tf.all_variables() if v.op.name == "network/decoder_block_4/deconv/deconv/biases"]
-        #        bias= self.sess.run(var[0])
-
-        # run the feed_forward
-        out_layers = self.sess.run(layers, feed_dict=feed_dict)
-        for layer in out_layers:
-            print(layer.shape)
-
-        #        dict_out= torchfile.load('out_networks_layers/dict_out.t7')
-        #       init= tf.constant_initializer(conv_w)
-        #        conv_w1 = tf.get_variable('my_weights', [3,3,128,128], tf.float32, initializer=init, trainable=True)
-        #        pp= tf.nn.relu(layers[39])
-        #        out_relu= self.sess.run(pp, feed_dict={self.model.x_pl: self.debug_x,
-        #                     self.model.y_pl: self.debug_y,
-        #                     self.model.is_training: False
-        #                     })
-        #       pp = tf.nn.conv2d_transpose(layers[39], conv_w, (1,32,64,128), strides=(1,2,2,1), padding="SAME")
-        #        pp= tf.image.resize_images(layers[39], (32,64))
-        #        pp = tf.nn.conv2d(pp, conv_w, strides=(1,1,1,1), padding="SAME")
-        #        bias1= tf.get_variable('my_bias', 128, tf.float32, tf.constant_initializer(bias))
-        #        pp = tf.nn.bias_add(pp, bias)
-        #        #self.sess.run(conv_w1.initializer)
-        #        #self.sess.run(bias1.initializer)
-        #        out_deconv= self.sess.run(pp, feed_dict={self.model.x_pl: self.debug_x,
-        #                     self.model.y_pl: self.debug_y,
-        #                     self.model.is_training: False
-        #                     })
-        #        out_deconv_direct= self.sess.run(layers[40], feed_dict={self.model.x_pl: self.debug_x,
-        #                     self.model.y_pl: self.debug_y,
-        #                     self.model.is_training: False
-        #                     })
-        #        pdb.set_trace()
-
-        # print(out_layers)
-        # exit(0)
-
-        # dump them in a pickle
-        with open("out_networks_layers/out_linknet_layers.pkl", "wb") as f:
-            pickle.dump(out_layers, f, protocol=2)
-
-        # run the feed_forward again to see argmax and segmented
-        out_argmax, segmented_imgs = self.sess.run(
-            [self.model.out_argmax,
-             self.model.segmented_summary],
-            feed_dict=feed_dict)
-
-        print('mean preds ', out_argmax[0].mean())
-
-        # plt.imsave(self.args.out_dir + 'imgs/' + 'debug.png', segmented_imgs[0])
-
-        self.metrics.update_metrics(out_argmax[0], self.debug_y, 0, 0)
-
-        mean_iou = self.metrics.compute_final_metrics(1)
-
-        print("mean_iou_of_debug: " + str(mean_iou))

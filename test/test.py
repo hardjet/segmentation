@@ -11,7 +11,6 @@ from utils.average_meter import FPSMeter
 from tqdm import tqdm
 import numpy as np
 # import tensorflow as tf
-import matplotlib
 import time
 # import h5py
 # import pickle
@@ -22,9 +21,9 @@ from utils.img_utils import decode_labels
 # from utils.seg_dataloader import SegDataLoader
 from utils.postprocess import postprocess
 import os
-
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+#
+# matplotlib.use('Agg')
+# import matplotlib.pyplot as plt
 
 
 class Test(BasicTest):
@@ -85,27 +84,15 @@ class Test(BasicTest):
         # Init reporter class
         self.reporter = Reporter(self.args.out_dir + 'report_test.json', self.args)
 
-    # def resize(self, data):
-    #     X = []
-    #     Y = []
-    #     for i in range(data['X'].shape[0]):
-    #         X.append(misc.imresize(data['X'][i, ...], (self.args.img_height, self.args.img_width)))
-    #         Y.append(misc.imresize(data['Y'][i, ...], (self.args.img_height, self.args.img_width), 'nearest'))
-    #     data['X'] = np.asarray(X)
-    #     data['Y'] = np.asarray(Y)
-    #     return data
-
-    # def crop(self):
-    #     sh = self.val_data['X'].shape
-    #     temp_val_data = {'X': np.zeros((sh[0] * 2, sh[1], sh[2] // 2, sh[3]), self.val_data['X'].dtype),
-    #                      'Y': np.zeros((sh[0] * 2, sh[1], sh[2] // 2), self.val_data['Y'].dtype)}
-    #     for i in range(sh[0]):
-    #         temp_val_data['X'][i * 2, :, :, :] = self.val_data['X'][i, :, :sh[2] // 2, :]
-    #         temp_val_data['X'][i * 2 + 1, :, :, :] = self.val_data['X'][i, :, sh[2] // 2:, :]
-    #         temp_val_data['Y'][i * 2, :, :] = self.val_data['Y'][i, :, :sh[2] // 2]
-    #         temp_val_data['Y'][i * 2 + 1, :, :] = self.val_data['Y'][i, :, sh[2] // 2:]
-    #
-    #     self.val_data = temp_val_data
+    def resize(self, data):
+        X = []
+        Y = []
+        for i in range(data['X'].shape[0]):
+            X.append(misc.imresize(data['X'][i, ...], (self.args.img_height, self.args.img_width)))
+            Y.append(misc.imresize(data['Y'][i, ...], (self.args.img_height, self.args.img_width), 'nearest'))
+        data['X'] = np.asarray(X)
+        data['Y'] = np.asarray(Y)
+        return data
 
     @timeit
     def load_vid_data(self):
@@ -119,19 +106,12 @@ class Test(BasicTest):
         print("Video data is loaded")
 
     @timeit
-    def load_val_data(self, v2=False):
+    def load_val_data(self):
         print("Loading Validation data..")
         self.test_data = {'X': np.load(self.args.data_dir + "X_val.npy"),
                           'Y': np.load(self.args.data_dir + "Y_val.npy")}
         self.test_data = self.resize(self.test_data)
         self.test_data['Y_large'] = self.test_data['Y']
-        if v2:
-            out_shape = (self.test_data['Y'].shape[1] // self.targets_resize,
-                         self.test_data['Y'].shape[2] // self.targets_resize)
-            yy = np.zeros((self.test_data['Y'].shape[0], out_shape[0], out_shape[1]), dtype=self.test_data['Y'].dtype)
-            for y in range(self.test_data['Y'].shape[0]):
-                yy[y, ...] = misc.imresize(self.test_data['Y'][y, ...], out_shape, interp='nearest')
-            self.test_data['Y'] = yy
 
         self.test_data_len = self.test_data['X'].shape[0] - self.test_data['X'].shape[0] % self.args.batch_size
         print("Validation-shape-x -- " + str(self.test_data['X'].shape))
@@ -217,8 +197,6 @@ class Test(BasicTest):
             # load mini_batches
             x_batch = self.test_data['X'][idx:idx + 1]
             y_batch = self.test_data['Y'][idx:idx + 1]
-            if self.args.data_mode == 'test_v2':
-                y_batch_large = self.test_data['Y_large'][idx:idx + 1]
 
             idx += 1
 
@@ -235,24 +213,11 @@ class Test(BasicTest):
                              }
 
             # run the feed_forward
-            if self.args.data_mode == 'test_v2':
-                out_argmax, acc = self.sess.run(
-                    [self.model.out_argmax, self.model.accuracy],
-                    feed_dict=feed_dict)
-            else:
-                out_argmax, acc, segmented_imgs = self.sess.run(
-                    [self.model.out_argmax, self.model.accuracy,
-                     # self.model.merged_summaries, self.model.segmented_summary],
-                     self.model.segmented_summary],
-                    feed_dict=feed_dict)
-
-            if self.args.data_mode == 'test_v2':
-                yy = np.zeros((out_argmax.shape[0], y_batch_large.shape[1], y_batch_large.shape[2]), dtype=np.uint32)
-                out_argmax = np.asarray(out_argmax, dtype=np.uint8)
-                for y in range(out_argmax.shape[0]):
-                    yy[y, ...] = misc.imresize(out_argmax[y, ...], y_batch_large.shape[1:], interp='nearest')
-                y_batch = y_batch_large
-                out_argmax = yy
+            out_argmax, acc, segmented_imgs = self.sess.run(
+                [self.model.out_argmax, self.model.accuracy,
+                 # self.model.merged_summaries, self.model.segmented_summary],
+                 self.model.segmented_summary],
+                feed_dict=feed_dict)
 
             if pkl:
                 out_argmax[0] = self.linknet_postprocess(out_argmax[0])
@@ -260,8 +225,8 @@ class Test(BasicTest):
 
             # print('mean preds ', out_argmax.mean())
             # np.save(self.args.out_dir + 'npy/' + str(cur_iteration) + '.npy', out_argmax[0])
-            if self.args.data_mode == 'test':
-                plt.imsave(self.args.out_dir + 'imgs/' + 'test_' + str(cur_iteration) + '.png', segmented_imgs[0])
+
+            misc.imsave(self.args.out_dir + 'imgs/' + 'test_' + str(cur_iteration) + '.png', segmented_imgs[0])
 
             # log loss and acc
             acc_list += [acc]
@@ -289,7 +254,7 @@ class Test(BasicTest):
 
         print("Plotting imgs")
         for i in range(len(img_list)):
-            plt.imsave(self.args.imgs_dir + 'test_' + str(i) + '.png', img_list[i])
+            misc.imsave(self.args.imgs_dir + 'test_' + str(i) + '.png', img_list[i])
 
     def realsense_imgs(self):
         print("realsense_imgs will begin NOW..")
@@ -312,7 +277,9 @@ class Test(BasicTest):
 
             # run the feed_forward
             segmented_imgs = self.sess.run([self.model.segmented_summary], feed_dict=feed_dict)
-            plt.imsave(self.args.out_dir + 'imgs/' + 'test_' + str(cur_iteration) + '.png', segmented_imgs[0][0])
+
+            # plt.imsave(self.args.out_dir + 'imgs/' + 'test_' + str(cur_iteration) + '.png', segmented_imgs[0][0])
+            misc.imsave(self.args.out_dir + 'imgs/' + 'test_' + str(cur_iteration) + '.png', segmented_imgs[0][0])
 
         tt.close()
         print("realsense_imgs finished~")
@@ -359,7 +326,7 @@ class Test(BasicTest):
             colored_save_path = self.args.out_dir + 'imgs/' + str(self.names_mapper['Y'][idx])
             if not os.path.exists(os.path.dirname(colored_save_path)):
                 os.makedirs(os.path.dirname(colored_save_path))
-            plt.imsave(colored_save_path, segmented_imgs[0])
+            misc.imsave(colored_save_path, segmented_imgs[0])
 
             # Results for official evaluation
             save_path = self.args.out_dir + 'results/' + str(self.names_mapper['Y'][idx])
