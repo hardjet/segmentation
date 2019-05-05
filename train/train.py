@@ -60,7 +60,7 @@ class Train(BasicTrain):
         # self.summary_tags = []
         self.summary_placeholders = {}
         self.summary_ops = {}
-        self.merged_summaries = None
+        # self.merged_summaries = None
         # init summaries and it's operators
         self.init_summaries()
         # Create summary writer
@@ -216,7 +216,7 @@ class Train(BasicTrain):
                 self.summary_placeholders[tag] = tf.placeholder('float32', shape, name=tag)
                 self.summary_ops[tag] = tf.summary.image(tag, self.summary_placeholders[tag], max_outputs=10)
 
-        self.merged_summaries = tf.summary.merge_all()
+        # self.merged_summaries = tf.summary.merge_all()
         # s = tf.get_collection(tf.GraphKeys.SUMMARIES)
         # for i in s:
         #     if i.name == 'train-summary-per-epoch/train_prediction_sample_1:0':
@@ -348,7 +348,7 @@ class Train(BasicTrain):
 
                     _, loss, acc, summaries_merged, segmented_imgs = self.sess.run(
                         [self.model.train_op, self.model.loss, self.model.accuracy,
-                         self.merged_summaries, self.model.segmented_summary],
+                         self.model.merged_summaries, self.model.segmented_summary],
                         feed_dict=feed_dict)
 
                     # log loss and acc
@@ -360,6 +360,7 @@ class Train(BasicTrain):
                     summaries_dict = dict()
                     summaries_dict['train-loss-per-epoch'] = total_loss
                     summaries_dict['train-acc-per-epoch'] = total_acc
+                    summaries_dict['train_prediction_sample'] = segmented_imgs[0][0]
 
                     self.add_summary(cur_it, summaries_dict=summaries_dict, summaries_merged=summaries_merged)
 
@@ -447,8 +448,8 @@ class Train(BasicTrain):
                 start = time.time()
                 # run the feed_forward
 
-                out_argmax, loss, acc, summaries_merged = self.sess.run(
-                    [self.model.out_argmax, self.model.loss, self.model.accuracy, self.model.merged_summaries],
+                out_argmax, loss, acc = self.sess.run(
+                    [self.model.out_argmax, self.model.loss, self.model.accuracy],
                     feed_dict=feed_dict)
 
                 end = time.time()
@@ -463,15 +464,9 @@ class Train(BasicTrain):
             else:
                 start = time.time()
                 # run the feed_forward
-                # Issues in concatenating gt and img with diff sizes now for segmented_imgs
-                if self.args.data_mode == 'experiment_v2':
-                    out_argmax, acc = self.sess.run(
-                        [self.model.out_argmax, self.model.accuracy],
-                        feed_dict=feed_dict)
-                else:
-                    out_argmax, acc, segmented_imgs = self.sess.run(
-                        [self.model.out_argmax, self.model.accuracy, self.model.segmented_summary],
-                        feed_dict=feed_dict)
+                out_argmax, acc, segmented_imgs = self.sess.run(
+                    [self.model.out_argmax, self.model.accuracy, self.model.segmented_summary],
+                    feed_dict=feed_dict)
 
                 end = time.time()
                 # log loss and acc
@@ -488,10 +483,8 @@ class Train(BasicTrain):
                 summaries_dict = dict()
                 summaries_dict['val-acc-per-epoch'] = total_acc
                 summaries_dict['mean_iou_on_val'] = mean_iou
-                # Issues in concatenating gt and img with diff sizes now for segmented_imgs
-                # if self.args.data_mode != 'experiment_v2':
-                #     summaries_dict['val_prediction_sample'] = segmented_imgs
-                # self.add_summary(step, summaries_dict=summaries_dict, summaries_merged=summaries_merged)
+                summaries_dict['val_prediction_sample'] = segmented_imgs[0][0]
+                self.add_summary(step, summaries_dict=summaries_dict)
 
                 # report
                 self.reporter.report_experiment_statistics('validation-acc', 'epoch-' + str(epoch), str(total_acc))

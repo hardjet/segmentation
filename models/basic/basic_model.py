@@ -116,7 +116,6 @@ class BasicModel:
             self.x_pl = tf.placeholder(tf.float32,
                                        [self.args.batch_size, self.params.img_height, self.params.img_width, 3])
             self.y_pl = tf.placeholder(tf.int32, [self.args.batch_size, self.params.img_height, self.params.img_width])
-            #            self.curr_learning_rate= tf.placeholder(tf.float32)
 
             if self.params.weighted_loss:
                 self.wghts = np.zeros((self.args.batch_size, self.params.img_height, self.params.img_width),
