@@ -360,7 +360,7 @@ class Train(BasicTrain):
                     summaries_dict = dict()
                     summaries_dict['train-loss-per-epoch'] = total_loss
                     summaries_dict['train-acc-per-epoch'] = total_acc
-                    summaries_dict['train_prediction_sample'] = segmented_imgs[0][0]
+                    summaries_dict['train_prediction_sample'] = segmented_imgs
 
                     self.add_summary(cur_it, summaries_dict=summaries_dict, summaries_merged=summaries_merged)
 
@@ -483,7 +483,7 @@ class Train(BasicTrain):
                 summaries_dict = dict()
                 summaries_dict['val-acc-per-epoch'] = total_acc
                 summaries_dict['mean_iou_on_val'] = mean_iou
-                summaries_dict['val_prediction_sample'] = segmented_imgs[0][0]
+                summaries_dict['val_prediction_sample'] = segmented_imgs
                 self.add_summary(step, summaries_dict=summaries_dict)
 
                 # report
